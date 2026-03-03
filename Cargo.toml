@@ -1,0 +1,18 @@
+[package]
+name = "pulse-echo"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+description = "Operational self-model and capability mapping for the Echo ecosystem"
+license = "AGPL-3.0-only"
+repository = "https://github.com/dnacenta/pulse-echo"
+
+[dependencies]
+echo-system-types = { git = "https://github.com/dnacenta/echo-system-types", tag = "v0.2.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "6"
+
+[dev-dependencies]
+tempfile = "3"
