@@ -185,6 +185,95 @@ pub fn domain_success_rate(docs_dir: &Path, domain: &str) -> Option<f64> {
     Some(successes as f64 / domain_outcomes.len() as f64)
 }
 
+// ---------------------------------------------------------------------------
+// Trait implementation: OutcomeTracker
+// ---------------------------------------------------------------------------
+
+use echo_system_types::monitoring as shared;
+
+/// Concrete implementation of the OutcomeTracker trait.
+///
+/// pulse-null core creates this and stores it as `Arc<dyn OutcomeTracker>`.
+/// All existing functions are preserved for standalone CLI use.
+pub struct PulseTracker;
+
+impl PulseTracker {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for PulseTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl shared::OutcomeTracker for PulseTracker {
+    fn build_outcome(
+        &self,
+        task_id: &str,
+        task_name: &str,
+        response_text: &str,
+        tool_rounds: u32,
+        input_tokens: u32,
+        output_tokens: u32,
+    ) -> shared::OutcomeRecord {
+        let internal = build_outcome(
+            task_id,
+            task_name,
+            response_text,
+            tool_rounds,
+            input_tokens,
+            output_tokens,
+        );
+        shared::OutcomeRecord {
+            task_id: internal.task_id,
+            timestamp: internal.timestamp.to_rfc3339(),
+            domain: internal.domain,
+            task_type: internal.task_type.to_string(),
+            description: internal.description,
+            outcome: internal.outcome.to_string(),
+            tokens_used: internal.tokens_used,
+            tool_rounds: internal.tool_rounds,
+        }
+    }
+
+    fn record_outcome(
+        &self,
+        docs_dir: &Path,
+        outcome: shared::OutcomeRecord,
+        max_outcomes: usize,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // Parse the shared record back into internal types for persistence
+        let task_type = crate::outcome::infer_task_type(&outcome.task_id);
+        let internal_outcome = match outcome.outcome.as_str() {
+            "success" => Outcome::Success,
+            "partial" => Outcome::Partial,
+            "failed" => Outcome::Failed,
+            "surprising" => Outcome::Surprising,
+            _ => Outcome::Success,
+        };
+        let timestamp = outcome
+            .timestamp
+            .parse::<chrono::DateTime<Utc>>()
+            .unwrap_or_else(|_| Utc::now());
+
+        let internal = crate::outcome::OutcomeRecord {
+            task_id: outcome.task_id,
+            timestamp,
+            domain: outcome.domain,
+            task_type,
+            description: outcome.description,
+            outcome: internal_outcome,
+            tokens_used: outcome.tokens_used,
+            tool_rounds: outcome.tool_rounds,
+        };
+
+        record_outcome(docs_dir, internal, max_outcomes)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
