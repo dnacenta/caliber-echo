@@ -10,9 +10,13 @@ pub mod paths;
 pub mod runtime;
 pub mod state;
 
+use std::any::Any;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 
-use echo_system_types::{HealthStatus, SetupPrompt};
+use echo_system_types::plugin::{Plugin, PluginContext, PluginResult, PluginRole};
+use echo_system_types::{HealthStatus, PluginMeta, SetupPrompt};
 
 /// Main pulse-echo struct. Holds the path to the entity's documents.
 pub struct PulseEcho {
@@ -35,7 +39,7 @@ impl PulseEcho {
     }
 
     /// Check health by verifying PULSE.md exists and outcome state is readable.
-    pub fn health(&self) -> HealthStatus {
+    fn health_check(&self) -> HealthStatus {
         let pulse_path = self.docs_dir.join("PULSE.md");
         if !pulse_path.exists() {
             return HealthStatus::Down("PULSE.md not found".to_string());
@@ -52,7 +56,7 @@ impl PulseEcho {
     }
 
     /// Setup prompts for the init wizard.
-    pub fn setup_prompts() -> Vec<SetupPrompt> {
+    fn get_setup_prompts() -> Vec<SetupPrompt> {
         vec![SetupPrompt {
             key: "docs_dir".into(),
             question: "Entity documents directory (where PULSE.md lives):".into(),
@@ -60,6 +64,54 @@ impl PulseEcho {
             secret: false,
             default: Some("./".into()),
         }]
+    }
+}
+
+/// Factory function — creates a fully initialized plugin.
+pub async fn create(
+    config: &serde_json::Value,
+    ctx: &PluginContext,
+) -> Result<Box<dyn Plugin>, Box<dyn std::error::Error + Send + Sync>> {
+    let docs_dir = config
+        .get("docs_dir")
+        .and_then(|v| v.as_str())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| ctx.entity_root.clone());
+
+    Ok(Box::new(PulseEcho::new(docs_dir)))
+}
+
+impl Plugin for PulseEcho {
+    fn meta(&self) -> PluginMeta {
+        PluginMeta {
+            name: "pulse-echo".into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+            description: "Operational self-model and outcome tracking".into(),
+        }
+    }
+
+    fn role(&self) -> PluginRole {
+        PluginRole::Outcome
+    }
+
+    fn start(&mut self) -> PluginResult<'_> {
+        Box::pin(async { Ok(()) })
+    }
+
+    fn stop(&mut self) -> PluginResult<'_> {
+        Box::pin(async { Ok(()) })
+    }
+
+    fn health(&self) -> Pin<Box<dyn Future<Output = HealthStatus> + Send + '_>> {
+        Box::pin(async move { self.health_check() })
+    }
+
+    fn setup_prompts(&self) -> Vec<SetupPrompt> {
+        Self::get_setup_prompts()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -72,7 +124,7 @@ mod tests {
     fn health_down_when_no_pulse_md() {
         let dir = TempDir::new().unwrap();
         let pulse = PulseEcho::new(dir.path().to_path_buf());
-        assert!(matches!(pulse.health(), HealthStatus::Down(_)));
+        assert!(matches!(pulse.health_check(), HealthStatus::Down(_)));
     }
 
     #[test]
@@ -80,7 +132,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         std::fs::write(dir.path().join("PULSE.md"), "# Pulse").unwrap();
         let pulse = PulseEcho::new(dir.path().to_path_buf());
-        assert!(matches!(pulse.health(), HealthStatus::Degraded(_)));
+        assert!(matches!(pulse.health_check(), HealthStatus::Degraded(_)));
     }
 
     #[test]
@@ -89,13 +141,26 @@ mod tests {
         std::fs::write(dir.path().join("PULSE.md"), "# Pulse").unwrap();
         std::fs::create_dir(dir.path().join("pulse")).unwrap();
         let pulse = PulseEcho::new(dir.path().to_path_buf());
-        assert!(matches!(pulse.health(), HealthStatus::Healthy));
+        assert!(matches!(pulse.health_check(), HealthStatus::Healthy));
     }
 
     #[test]
     fn setup_prompts_not_empty() {
-        let prompts = PulseEcho::setup_prompts();
+        let prompts = PulseEcho::get_setup_prompts();
         assert!(!prompts.is_empty());
         assert_eq!(prompts[0].key, "docs_dir");
+    }
+
+    #[test]
+    fn plugin_meta() {
+        let pulse = PulseEcho::new(PathBuf::from("/tmp"));
+        let meta = pulse.meta();
+        assert_eq!(meta.name, "pulse-echo");
+    }
+
+    #[test]
+    fn plugin_role_is_outcome() {
+        let pulse = PulseEcho::new(PathBuf::from("/tmp"));
+        assert_eq!(pulse.role(), PluginRole::Outcome);
     }
 }
