@@ -1,4 +1,4 @@
-//! Persistent state for pulse-echo outcome tracking.
+//! Persistent state for caliber-echo outcome tracking.
 
 use std::path::Path;
 
@@ -9,12 +9,12 @@ use crate::paths;
 
 /// Persisted outcome history.
 #[derive(Debug, Serialize, Deserialize, Default)]
-pub struct PulseState {
+pub struct CaliberState {
     /// Rolling window of outcome records.
     pub outcomes: Vec<OutcomeRecord>,
 }
 
-impl PulseState {
+impl CaliberState {
     /// Load from disk, or return empty state.
     pub fn load(docs_dir: &Path) -> Self {
         let path = paths::outcomes_file(docs_dir);
@@ -24,9 +24,9 @@ impl PulseState {
         }
     }
 
-    /// Save to disk, creating the pulse/ directory if needed.
+    /// Save to disk, creating the caliber/ directory if needed.
     pub fn save(&self, docs_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        let dir = paths::pulse_dir(docs_dir);
+        let dir = paths::caliber_dir(docs_dir);
         std::fs::create_dir_all(&dir)?;
         let path = paths::outcomes_file(docs_dir);
         let content = serde_json::to_string_pretty(self)?;
@@ -95,25 +95,25 @@ mod tests {
     #[test]
     fn load_empty_returns_default() {
         let dir = TempDir::new().unwrap();
-        let state = PulseState::load(dir.path());
+        let state = CaliberState::load(dir.path());
         assert!(state.outcomes.is_empty());
     }
 
     #[test]
     fn save_and_load_roundtrip() {
         let dir = TempDir::new().unwrap();
-        let mut state = PulseState::default();
+        let mut state = CaliberState::default();
         state.record(make_outcome("t1", "research", Outcome::Success), 200);
         state.save(dir.path()).unwrap();
 
-        let loaded = PulseState::load(dir.path());
+        let loaded = CaliberState::load(dir.path());
         assert_eq!(loaded.outcomes.len(), 1);
         assert_eq!(loaded.outcomes[0].task_id, "t1");
     }
 
     #[test]
     fn record_trims_to_max() {
-        let mut state = PulseState::default();
+        let mut state = CaliberState::default();
         for i in 0..5 {
             state.record(
                 make_outcome(&format!("t{}", i), "research", Outcome::Success),
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn domain_counts_aggregates() {
-        let mut state = PulseState::default();
+        let mut state = CaliberState::default();
         state.record(make_outcome("t1", "research", Outcome::Success), 200);
         state.record(make_outcome("t2", "research", Outcome::Success), 200);
         state.record(make_outcome("t3", "reflection", Outcome::Success), 200);
@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn outcome_counts_tallies() {
-        let mut state = PulseState::default();
+        let mut state = CaliberState::default();
         state.record(make_outcome("t1", "r", Outcome::Success), 200);
         state.record(make_outcome("t2", "r", Outcome::Success), 200);
         state.record(make_outcome("t3", "r", Outcome::Failed), 200);

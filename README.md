@@ -1,9 +1,9 @@
-# pulse-echo
+# caliber-echo
 
-[![License: AGPL-3.0](https://img.shields.io/github/license/dnacenta/pulse-echo)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/github/license/dnacenta/caliber-echo)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.80%2B-orange)](https://rustup.rs/)
 
-Operational self-model and outcome tracking for [echo-system](https://github.com/dnacenta/echo-system) entities.
+Operational self-model and outcome tracking for [pulse-null](https://github.com/dnacenta/pulse-null) entities.
 
 Records what was attempted, what happened, and how predictions compared to reality. Every scheduled task and intent execution produces an `OutcomeRecord` with task type, domain, outcome classification, and token usage. Over time, this builds a data-backed picture of what the entity is good at, where it struggles, and how it's changing.
 
@@ -13,16 +13,15 @@ Records what was attempted, what happened, and how predictions compared to reali
 - **Inference**: Automatically classifies task type and domain from task metadata
 - **Rolling window**: Configurable max outcomes with oldest-first eviction
 - **Render**: Produces a prompt-injectable summary with success rates, domain breakdowns, and failure patterns
-- **Health checks**: Reports status based on PULSE.md and pulse directory presence
+- **Health checks**: Reports status based on CALIBER.md and caliber directory presence
 
 ## Usage
 
-pulse-echo is used as a dependency of echo-system. Configure in `echo-system.toml`:
+caliber-echo is used as a dependency of pulse-null. Configure in your entity config:
 
 ```toml
-[pulse]
-enabled = true
-max_outcomes = 200
+[plugins.caliber-echo]
+docs_dir = "/path/to/entity"
 ```
 
 Outcome recording happens automatically after every scheduled task and intent execution.

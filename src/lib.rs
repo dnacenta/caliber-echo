@@ -1,6 +1,6 @@
-//! pulse-echo — Operational self-model and capability mapping
+//! caliber-echo — Operational self-model and capability mapping
 //!
-//! Manages PULSE.md and outcome tracking for AI entities.
+//! Manages CALIBER.md and outcome tracking for AI entities.
 //! Records what was attempted, what happened, and how predictions
 //! compared to reality. Foundation for trajectory mining and
 //! external calibration.
@@ -18,12 +18,12 @@ use std::pin::Pin;
 use echo_system_types::plugin::{Plugin, PluginContext, PluginResult, PluginRole};
 use echo_system_types::{HealthStatus, PluginMeta, SetupPrompt};
 
-/// Main pulse-echo struct. Holds the path to the entity's documents.
-pub struct PulseEcho {
+/// Main caliber-echo struct. Holds the path to the entity's documents.
+pub struct CaliberEcho {
     docs_dir: PathBuf,
 }
 
-impl PulseEcho {
+impl CaliberEcho {
     pub fn new(docs_dir: PathBuf) -> Self {
         Self { docs_dir }
     }
@@ -38,17 +38,17 @@ impl PulseEcho {
         &self.docs_dir
     }
 
-    /// Check health by verifying PULSE.md exists and outcome state is readable.
+    /// Check health by verifying CALIBER.md exists and outcome state is readable.
     fn health_check(&self) -> HealthStatus {
-        let pulse_path = self.docs_dir.join("PULSE.md");
-        if !pulse_path.exists() {
-            return HealthStatus::Down("PULSE.md not found".to_string());
+        let caliber_path = self.docs_dir.join("CALIBER.md");
+        if !caliber_path.exists() {
+            return HealthStatus::Down("CALIBER.md not found".to_string());
         }
 
-        let pulse_dir = self.docs_dir.join("pulse");
-        if !pulse_dir.exists() {
+        let caliber_dir = self.docs_dir.join("caliber");
+        if !caliber_dir.exists() {
             return HealthStatus::Degraded(
-                "pulse/ directory missing — no outcome tracking yet".to_string(),
+                "caliber/ directory missing — no outcome tracking yet".to_string(),
             );
         }
 
@@ -59,7 +59,7 @@ impl PulseEcho {
     fn get_setup_prompts() -> Vec<SetupPrompt> {
         vec![SetupPrompt {
             key: "docs_dir".into(),
-            question: "Entity documents directory (where PULSE.md lives):".into(),
+            question: "Entity documents directory (where CALIBER.md lives):".into(),
             required: true,
             secret: false,
             default: Some("./".into()),
@@ -78,13 +78,13 @@ pub async fn create(
         .map(PathBuf::from)
         .unwrap_or_else(|| ctx.entity_root.clone());
 
-    Ok(Box::new(PulseEcho::new(docs_dir)))
+    Ok(Box::new(CaliberEcho::new(docs_dir)))
 }
 
-impl Plugin for PulseEcho {
+impl Plugin for CaliberEcho {
     fn meta(&self) -> PluginMeta {
         PluginMeta {
-            name: "pulse-echo".into(),
+            name: "caliber-echo".into(),
             version: env!("CARGO_PKG_VERSION").into(),
             description: "Operational self-model and outcome tracking".into(),
         }
@@ -121,46 +121,46 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn health_down_when_no_pulse_md() {
+    fn health_down_when_no_caliber_md() {
         let dir = TempDir::new().unwrap();
-        let pulse = PulseEcho::new(dir.path().to_path_buf());
-        assert!(matches!(pulse.health_check(), HealthStatus::Down(_)));
+        let caliber = CaliberEcho::new(dir.path().to_path_buf());
+        assert!(matches!(caliber.health_check(), HealthStatus::Down(_)));
     }
 
     #[test]
-    fn health_degraded_when_no_pulse_dir() {
+    fn health_degraded_when_no_caliber_dir() {
         let dir = TempDir::new().unwrap();
-        std::fs::write(dir.path().join("PULSE.md"), "# Pulse").unwrap();
-        let pulse = PulseEcho::new(dir.path().to_path_buf());
-        assert!(matches!(pulse.health_check(), HealthStatus::Degraded(_)));
+        std::fs::write(dir.path().join("CALIBER.md"), "# Caliber").unwrap();
+        let caliber = CaliberEcho::new(dir.path().to_path_buf());
+        assert!(matches!(caliber.health_check(), HealthStatus::Degraded(_)));
     }
 
     #[test]
     fn health_healthy_when_everything_exists() {
         let dir = TempDir::new().unwrap();
-        std::fs::write(dir.path().join("PULSE.md"), "# Pulse").unwrap();
-        std::fs::create_dir(dir.path().join("pulse")).unwrap();
-        let pulse = PulseEcho::new(dir.path().to_path_buf());
-        assert!(matches!(pulse.health_check(), HealthStatus::Healthy));
+        std::fs::write(dir.path().join("CALIBER.md"), "# Caliber").unwrap();
+        std::fs::create_dir(dir.path().join("caliber")).unwrap();
+        let caliber = CaliberEcho::new(dir.path().to_path_buf());
+        assert!(matches!(caliber.health_check(), HealthStatus::Healthy));
     }
 
     #[test]
     fn setup_prompts_not_empty() {
-        let prompts = PulseEcho::get_setup_prompts();
+        let prompts = CaliberEcho::get_setup_prompts();
         assert!(!prompts.is_empty());
         assert_eq!(prompts[0].key, "docs_dir");
     }
 
     #[test]
     fn plugin_meta() {
-        let pulse = PulseEcho::new(PathBuf::from("/tmp"));
-        let meta = pulse.meta();
-        assert_eq!(meta.name, "pulse-echo");
+        let caliber = CaliberEcho::new(PathBuf::from("/tmp"));
+        let meta = caliber.meta();
+        assert_eq!(meta.name, "caliber-echo");
     }
 
     #[test]
     fn plugin_role_is_outcome() {
-        let pulse = PulseEcho::new(PathBuf::from("/tmp"));
-        assert_eq!(pulse.role(), PluginRole::Outcome);
+        let caliber = CaliberEcho::new(PathBuf::from("/tmp"));
+        assert_eq!(caliber.role(), PluginRole::Outcome);
     }
 }
