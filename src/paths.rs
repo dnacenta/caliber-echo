@@ -1,30 +1,30 @@
-//! Path resolution for pulse-echo.
+//! Path resolution for caliber-echo.
 
 use std::path::PathBuf;
 
 /// Resolve the entity documents directory.
-/// Checks PULSE_ECHO_DOCS env var first, then falls back to home directory.
+/// Checks CALIBER_ECHO_DOCS env var first, then falls back to home directory.
 pub fn docs_dir() -> Result<PathBuf, String> {
-    if let Ok(p) = std::env::var("PULSE_ECHO_DOCS") {
+    if let Ok(p) = std::env::var("CALIBER_ECHO_DOCS") {
         return Ok(PathBuf::from(p));
     }
     dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())
 }
 
-/// Resolve the pulse data directory (where outcomes.json lives).
-/// This is `{docs_dir}/pulse/`.
-pub fn pulse_dir(docs_dir: &std::path::Path) -> PathBuf {
-    docs_dir.join("pulse")
+/// Resolve the caliber data directory (where outcomes.json lives).
+/// This is `{docs_dir}/caliber/`.
+pub fn caliber_dir(docs_dir: &std::path::Path) -> PathBuf {
+    docs_dir.join("caliber")
 }
 
 /// Path to the outcomes file.
 pub fn outcomes_file(docs_dir: &std::path::Path) -> PathBuf {
-    pulse_dir(docs_dir).join("outcomes.json")
+    caliber_dir(docs_dir).join("outcomes.json")
 }
 
-/// Path to PULSE.md.
-pub fn pulse_md(docs_dir: &std::path::Path) -> PathBuf {
-    docs_dir.join("PULSE.md")
+/// Path to CALIBER.md.
+pub fn caliber_md(docs_dir: &std::path::Path) -> PathBuf {
+    docs_dir.join("CALIBER.md")
 }
 
 #[cfg(test)]
@@ -33,23 +33,23 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn pulse_dir_is_under_docs() {
+    fn caliber_dir_is_under_docs() {
         let docs = Path::new("/tmp/entity");
-        assert_eq!(pulse_dir(docs), Path::new("/tmp/entity/pulse"));
+        assert_eq!(caliber_dir(docs), Path::new("/tmp/entity/caliber"));
     }
 
     #[test]
-    fn outcomes_file_is_under_pulse() {
+    fn outcomes_file_is_under_caliber() {
         let docs = Path::new("/tmp/entity");
         assert_eq!(
             outcomes_file(docs),
-            Path::new("/tmp/entity/pulse/outcomes.json")
+            Path::new("/tmp/entity/caliber/outcomes.json")
         );
     }
 
     #[test]
-    fn pulse_md_is_at_root() {
+    fn caliber_md_is_at_root() {
         let docs = Path::new("/tmp/entity");
-        assert_eq!(pulse_md(docs), Path::new("/tmp/entity/PULSE.md"));
+        assert_eq!(caliber_md(docs), Path::new("/tmp/entity/CALIBER.md"));
     }
 }

@@ -1,4 +1,4 @@
-//! Core runtime logic for pulse-echo.
+//! Core runtime logic for caliber-echo.
 //!
 //! Pure functions that accept `&Path` parameters.
 //! No mutable state — all persistence via file I/O.
@@ -8,7 +8,7 @@ use std::path::Path;
 use chrono::Utc;
 
 use crate::outcome::{infer_domain, infer_outcome, infer_task_type, Outcome, OutcomeRecord};
-use crate::state::PulseState;
+use crate::state::CaliberState;
 
 /// Build an outcome record from task execution results.
 pub fn build_outcome(
@@ -41,20 +41,20 @@ pub fn record_outcome(
     outcome: OutcomeRecord,
     max_outcomes: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut state = PulseState::load(docs_dir);
+    let mut state = CaliberState::load(docs_dir);
     state.record(outcome, max_outcomes);
     state.save(docs_dir)
 }
 
 /// Load all recorded outcomes.
 pub fn load_outcomes(docs_dir: &Path) -> Vec<OutcomeRecord> {
-    PulseState::load(docs_dir).outcomes
+    CaliberState::load(docs_dir).outcomes
 }
 
 /// Render a summary of the operational self-model for prompt injection.
 /// Kept concise (~30-50 lines) so it works as background context.
 pub fn render(docs_dir: &Path) -> String {
-    let state = PulseState::load(docs_dir);
+    let state = CaliberState::load(docs_dir);
     let total = state.outcomes.len();
 
     if total == 0 {
@@ -62,7 +62,7 @@ pub fn render(docs_dir: &Path) -> String {
     }
 
     let mut lines = Vec::new();
-    lines.push("## Operational Self-Model (pulse-echo)".to_string());
+    lines.push("## Operational Self-Model (caliber-echo)".to_string());
     lines.push(String::new());
 
     // Outcome summary
@@ -154,7 +154,7 @@ pub fn render_outcome_line(outcome: &OutcomeRecord) -> String {
 
 /// Get recent outcomes for a specific domain.
 pub fn domain_history(docs_dir: &Path, domain: &str, limit: usize) -> Vec<OutcomeRecord> {
-    let state = PulseState::load(docs_dir);
+    let state = CaliberState::load(docs_dir);
     state
         .outcomes
         .into_iter()
@@ -166,7 +166,7 @@ pub fn domain_history(docs_dir: &Path, domain: &str, limit: usize) -> Vec<Outcom
 
 /// Calculate success rate for a domain. Returns None if no data.
 pub fn domain_success_rate(docs_dir: &Path, domain: &str) -> Option<f64> {
-    let state = PulseState::load(docs_dir);
+    let state = CaliberState::load(docs_dir);
     let domain_outcomes: Vec<_> = state
         .outcomes
         .iter()
@@ -195,21 +195,21 @@ use echo_system_types::monitoring as shared;
 ///
 /// pulse-null core creates this and stores it as `Arc<dyn OutcomeTracker>`.
 /// All existing functions are preserved for standalone CLI use.
-pub struct PulseTracker;
+pub struct CaliberTracker;
 
-impl PulseTracker {
+impl CaliberTracker {
     pub fn new() -> Self {
         Self
     }
 }
 
-impl Default for PulseTracker {
+impl Default for CaliberTracker {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl shared::OutcomeTracker for PulseTracker {
+impl shared::OutcomeTracker for CaliberTracker {
     fn build_outcome(
         &self,
         task_id: &str,
@@ -377,7 +377,7 @@ mod tests {
     #[test]
     fn domain_success_rate_with_data() {
         let dir = TempDir::new().unwrap();
-        let mut state = PulseState::default();
+        let mut state = CaliberState::default();
         state.record(
             build_outcome("r1", "R1", "Good output here.", 1, 100, 50),
             200,
